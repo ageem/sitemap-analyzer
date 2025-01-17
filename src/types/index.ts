@@ -10,27 +10,30 @@ export interface MetaData {
 }
 
 export interface TechnicalSpecs {
-  loadSpeed: number; // in milliseconds
-  pageSize: number; // in bytes
+  loadSpeed: string; // Store as string to ensure serialization
+  pageSize: string; // Store as string to ensure serialization
 }
 
 export interface DebugInfo {
   xmlParsingStatus: string;
-  httpStatus: number;
+  httpStatus: string; // Store as string to ensure serialization
   networkErrors: string[];
   parsingErrors: string[];
   rateLimitingIssues: string[];
   memoryUsage: {
-    heapUsed: number;
-    heapTotal: number;
+    heapUsed: string;
+    heapTotal: string;
+    rss: string;
+    external: string;
+    arrayBuffers: string;
   };
-  processingTime: number;
+  processingTime: string; // Store as string to ensure serialization
   stackTrace?: string;
-  requestLogs: {
+  requestLogs: Array<{
     url: string;
-    status: number;
-    duration: number;
-  }[];
+    status: string; // Store as string to ensure serialization
+    duration: string; // Store as string to ensure serialization
+  }>;
 }
 
 export interface AnalysisResult {
@@ -40,4 +43,9 @@ export interface AnalysisResult {
   metadata: MetaData;
   technicalSpecs: TechnicalSpecs;
   debugInfo?: DebugInfo;
+}
+
+// Ensure all data stored in Prisma is serializable
+export type SerializableData = {
+  [key: string]: string | number | boolean | null | SerializableData | Array<string | number | boolean | null | SerializableData>;
 }

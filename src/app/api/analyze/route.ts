@@ -20,12 +20,18 @@ export async function POST(req: Request) {
   const startTime = Date.now()
   const debugInfo: DebugInfo = {
     xmlParsingStatus: 'pending',
-    httpStatus: 0,
+    httpStatus: '0',
     networkErrors: [],
     parsingErrors: [],
     rateLimitingIssues: [],
-    memoryUsage: process.memoryUsage(),
-    processingTime: 0,
+    memoryUsage: {
+      heapUsed: String(process.memoryUsage().heapUsed),
+      heapTotal: String(process.memoryUsage().heapTotal),
+      rss: String(process.memoryUsage().rss),
+      external: String(process.memoryUsage().external),
+      arrayBuffers: String(process.memoryUsage().arrayBuffers)
+    },
+    processingTime: '0',
     requestLogs: [],
   }
 
@@ -48,8 +54,14 @@ export async function POST(req: Request) {
 
     return response
   } catch (error) {
-    debugInfo.processingTime = (Date.now() - startTime) / 1000
-    debugInfo.memoryUsage = process.memoryUsage()
+    debugInfo.processingTime = String((Date.now() - startTime) / 1000)
+    debugInfo.memoryUsage = {
+      heapUsed: String(process.memoryUsage().heapUsed),
+      heapTotal: String(process.memoryUsage().heapTotal),
+      rss: String(process.memoryUsage().rss),
+      external: String(process.memoryUsage().external),
+      arrayBuffers: String(process.memoryUsage().arrayBuffers)
+    }
     
     if (error instanceof Error) {
       debugInfo.stackTrace = error.stack
@@ -73,7 +85,7 @@ async function processRequest(url: string, writer: WritableStreamDefaultWriter, 
     // Fetch and parse sitemap
     debugInfo.xmlParsingStatus = 'fetching'
     const sitemapResponse = await axios.get(url, { timeout: TIMEOUT })
-    debugInfo.httpStatus = sitemapResponse.status
+    debugInfo.httpStatus = String(sitemapResponse.status)
 
     debugInfo.xmlParsingStatus = 'parsing'
     const parser = new XMLParser({
@@ -163,19 +175,28 @@ async function processRequest(url: string, writer: WritableStreamDefaultWriter, 
 
             result = {
               url: pageUrl,
-              status: issues.length === 0 ? 'pass' : 'fail',
+              status: issues.length > 0 ? 'fail' : 'pass',
               issues,
               metadata,
               technicalSpecs: {
-                loadSpeed,
-                pageSize,
-              }
+                loadSpeed: String(loadSpeed),
+                pageSize: String(pageSize),
+              },
+              debugInfo: {
+                ...debugInfo,
+                processingTime: String((Date.now() - startTime) / 1000),
+                requestLogs: debugInfo.requestLogs.map(log => ({
+                  ...log,
+                  status: String(log.status),
+                  duration: String(log.duration)
+                }))
+              },
             }
 
             debugInfo.requestLogs.push({
               url: pageUrl,
-              status: response.status,
-              duration: Date.now() - pageStartTime,
+              status: String(response.status),
+              duration: String(Date.now() - pageStartTime),
             })
 
             // Adjust delay based on response time
@@ -217,8 +238,14 @@ async function processRequest(url: string, writer: WritableStreamDefaultWriter, 
     }
 
     // Send final results
-    debugInfo.processingTime = (Date.now() - startTime) / 1000
-    debugInfo.memoryUsage = process.memoryUsage()
+    debugInfo.processingTime = String((Date.now() - startTime) / 1000)
+    debugInfo.memoryUsage = {
+      heapUsed: String(process.memoryUsage().heapUsed),
+      heapTotal: String(process.memoryUsage().heapTotal),
+      rss: String(process.memoryUsage().rss),
+      external: String(process.memoryUsage().external),
+      arrayBuffers: String(process.memoryUsage().arrayBuffers)
+    }
 
     await writer.write(encoder.encode(`data: ${JSON.stringify({
       type: 'complete',
